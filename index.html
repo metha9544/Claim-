@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
+    <title>METIST - Product Claim</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        :root { --pink: #f8c8dc; --pink-dark: #d48398; --bg: #fdf2f7; --text: #5a3d45; --accent: #ff6b6b; }
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; background: var(--bg); margin: 0; padding: 15px; color: var(--text); }
+        .header { text-align: center; margin-bottom: 15px; }
+        .header h1 { color: var(--pink-dark); margin: 0; font-size: 1.8rem; }
+        .header p { color: #bca0a0; margin: 0; font-size: 0.8rem; font-weight: bold; letter-spacing: 1px; }
+        .card { background: #fff; border-radius: 20px; padding: 18px; margin-bottom: 15px; box-shadow: 0 8px 20px rgba(212, 131, 152, 0.12); position: relative; }
+        h2 { font-size: 1.1rem; margin-top: 0; margin-bottom: 12px; color: var(--pink-dark); }
+        input[type="text"], textarea, select { width: 100%; padding: 12px; border-radius: 14px; border: 1px solid #f2cbd3; box-sizing: border-box; font-size: 16px; margin-bottom: 10px; font-family: inherit; }
+        textarea { height: 100px; resize: none; }
+        
+        .checkbox-group { display: flex; gap: 15px; margin-bottom: 10px; flex-wrap: wrap; }
+        .checkbox-item { display: flex; align-items: center; gap: 8px; font-size: 15px; cursor: pointer; background: #fff0f3; padding: 8px 15px; border-radius: 10px; }
+        
+        .payment-section { text-align: center; border-top: 2px dashed #f2cbd3; padding-top: 15px; margin-top: 15px; }
+        .qr-code { width: 180px; height: 180px; object-fit: contain; margin: 10px auto; border: 5px solid white; border-radius: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        .fee-tag { background: var(--accent); color: white; padding: 5px 15px; border-radius: 20px; display: inline-block; font-weight: bold; margin-bottom: 5px; }
+        
+        /* สไตล์ส่วนแจ้งเตือนพิเศษ */
+        .notice-card { background: #fff9db; border: 2px solid #fab005; border-radius: 15px; padding: 15px; text-align: center; margin-bottom: 15px; }
+        .notice-card p { margin: 0; color: #d35400; font-weight: bold; font-size: 14px; line-height: 1.5; }
+
+        .btn-submit { width: 100%; background: var(--pink-dark); color: white; padding: 18px; border: none; border-radius: 18px; font-size: 18px; font-weight: bold; cursor: pointer; transition: 0.3s; }
+        .btn-submit:active { transform: scale(0.98); }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <h1>🛠️ เคลมสินค้า</h1>
+    <p>METIST FLOWER STUDIO</p>
+</div>
+
+<div class="card">
+    <h2>👤 ข้อมูลผู้แจ้งเคลม</h2>
+    <input type="text" id="custName" placeholder="ชื่อ TikTok หรือชื่อ LINE">
+    <textarea id="custAddress" placeholder="ระบุชื่อ-ที่อยู่ และเบอร์โทรศัพท์ สำหรับจัดส่งสินค้ากลับ"></textarea>
+</div>
+
+<div class="card">
+    <h2>📦 ประเภทสินค้าที่ต้องการเคลม</h2>
+    <div class="checkbox-group">
+        <label class="checkbox-item"><input type="checkbox" name="productType" value="ดอกไม้"> 🌹 ดอกไม้</label>
+        <label class="checkbox-item"><input type="checkbox" name="productType" value="เครื่องตัดริบบิ้น"> ✂️ เครื่องตัดริบบิ้น</label>
+    </div>
+</div>
+
+<div class="card">
+    <h2>📝 รายละเอียดการเคลม</h2>
+    <textarea id="claimDetail" placeholder="กรุณาระบุเหตุผลอย่างละเอียด (ปัญหาที่เจอ)"></textarea>
+</div>
+
+<div class="card">
+    <h2>🚚 วิธีการส่งคืนสินค้า</h2>
+    <div class="checkbox-group">
+        <label class="checkbox-item"><input type="radio" name="returnMethod" value="จัดส่งเองที่หน้าสาขา"> จัดส่งเองที่หน้าสาขา</label>
+        <label class="checkbox-item"><input type="radio" name="returnMethod" value="เรียกรถเข้ารับ"> เรียกรถเข้ารับ</label>
+    </div>
+    
+    <p style="font-size: 14px; margin-bottom: 8px; font-weight: bold;">เลือกบริษัทขนส่ง:</p>
+    <select id="courier">
+        <option value="">-- เลือกขนส่ง --</option>
+        <option value="Flash">Flash Express(เรียกรถได้)</option>
+        <option value="J&T">J&T Express(จัดส่งที่สาขา)</option>
+        <option value="KEX">KEX Express(จัดส่งที่สาขา)</option>
+        <option value="ไปรษณีย์">ไปรษณีย์ไทย(เรียกรถได้)</option>
+        <option value="DHL">DHL(จัดส่งที่สาขา)</option>
+        <option value="SPX">SPX Express(จัดส่งที่สาขา)</option>
+        <option value="Best Express">Best Express(จัดส่งที่สาขา)</option>
+    </select>
+</div>
+
+<div class="card">
+    <h2>💳 ค่าธรรมเนียมจัดส่งเคลม</h2>
+    <div class="payment-section">
+        <div class="fee-tag">ค่าจัดส่งในการเคลมสินค้า 19 บาท</div>
+        <img src="QR.jpg" alt="QR Code" class="qr-code">
+        <p style="font-size:12px; color:#888;">(พร้อมเพย์ / เมธา พลายละหาญ)</p>
+    </div>
+    <label style="font-size: 14px; font-weight:bold; display: block; margin-top: 15px;">อัปโหลดสลิปการโอนเงิน:</label>
+    <input type="file" id="slipInput" accept="image/*" style="margin-top:10px;">
+</div>
+
+<div class="notice-card">
+    <p>📢 ใบปะหน้าจะถูกจัดส่งไปในกล่องสินค้าใหม่<br>เมื่อได้รับแล้วกรุณาจัดส่งคืนตามช่องทางที่เลือก</p>
+</div>
+
+<button class="btn-submit" id="submitBtn" onclick="submitClaim()">ส่งข้อมูลการเคลม 🌸</button>
+
+<script>
+    const SUPABASE_URL = 'https://hcxegxzyaeckcfybqmuw.supabase.co';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhjeGVneHp5YWVja2NmeWJxbXV3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI3Njk2NDAsImV4cCI6MjA4ODM0NTY0MH0.V24YgTlKrFL9LpzUFI8O9beRA9olxW-LYvsaMaVuO4w';
+    const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    async function submitClaim() {
+        const btn = document.getElementById("submitBtn");
+        const name = document.getElementById("custName").value;
+        const address = document.getElementById("custAddress").value;
+        const detail = document.getElementById("claimDetail").value;
+        const courier = document.getElementById("courier").value;
+        const slipFile = document.getElementById("slipInput").files[0];
+        const productTypes = Array.from(document.querySelectorAll('input[name="productType"]:checked')).map(el => el.value);
+        const returnMethod = document.querySelector('input[name="returnMethod"]:checked')?.value;
+
+        if(!name || !address || !detail || productTypes.length === 0 || !returnMethod || !courier || !slipFile) { 
+            alert("กรุณากรอกข้อมูลให้ครบถ้วนและแนบสลิปนะคะ"); 
+            return; 
+        }
+        
+        btn.disabled = true;
+        btn.innerText = "กำลังส่งข้อมูล...";
+
+        try {
+            const fileName = `claim_${Date.now()}.png`; 
+            const { data: uploadData, error: uploadError } = await _supabase.storage
+                .from('slips')
+                .upload(fileName, slipFile);
+
+            if (uploadError) throw uploadError;
+            const { data: urlData } = _supabase.storage.from('slips').getPublicUrl(fileName);
+
+            const { error: insertError } = await _supabase.from('orders').insert([{
+                name: name,
+                total: 19,
+                status: false,
+                details: {
+                    case: "CLAIM",
+                    address: address,
+                    items: productTypes,
+                    reason: detail,
+                    method: returnMethod,
+                    courier: courier
+                },
+                slip_url: urlData.publicUrl
+            }]);
+
+            if (insertError) throw insertError;
+
+            alert("ส่งเรื่องเคลมสำเร็จ! อย่าลืมรอรับใบปะหน้าจากทางร้านนะคะ ✨"); 
+            location.reload(); 
+
+        } catch (err) {
+            alert("Error: " + err.message);
+            btn.disabled = false;
+            btn.innerText = "ส่งข้อมูลการเคลม 🌸";
+        }
+    }
+</script>
+</body>
+</html>
