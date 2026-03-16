@@ -23,12 +23,14 @@
         .qr-code { width: 180px; height: 180px; object-fit: contain; margin: 10px auto; border: 5px solid white; border-radius: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
         .fee-tag { background: var(--accent); color: white; padding: 5px 15px; border-radius: 20px; display: inline-block; font-weight: bold; margin-bottom: 5px; }
         
-        /* สไตล์ส่วนแจ้งเตือนพิเศษ */
         .notice-card { background: #fff9db; border: 2px solid #fab005; border-radius: 15px; padding: 15px; text-align: center; margin-bottom: 15px; }
         .notice-card p { margin: 0; color: #d35400; font-weight: bold; font-size: 14px; line-height: 1.5; }
 
         .btn-submit { width: 100%; background: var(--pink-dark); color: white; padding: 18px; border: none; border-radius: 18px; font-size: 18px; font-weight: bold; cursor: pointer; transition: 0.3s; }
         .btn-submit:active { transform: scale(0.98); }
+
+        /* ส่วนที่เพิ่มเพื่อให้ลูกค้าเลือกแบบเครื่องตัดได้ (ดีไซน์เดียวกับ returnMethod ของคุณ) */
+        .cutter-options { display: none; margin-top: 10px; border-top: 1px solid #eee; padding-top: 10px; }
     </style>
 </head>
 <body>
@@ -48,7 +50,15 @@
     <h2>📦 ประเภทสินค้าที่ต้องการเคลม</h2>
     <div class="checkbox-group">
         <label class="checkbox-item"><input type="checkbox" name="productType" value="ดอกไม้"> 🌹 ดอกไม้</label>
-        <label class="checkbox-item"><input type="checkbox" name="productType" value="เครื่องตัดริบบิ้น"> ✂️ เครื่องตัดริบบิ้น</label>
+        <label class="checkbox-item"><input type="checkbox" name="productType" value="เครื่องตัดริบบิ้น" id="cutterCheck"> ✂️ เครื่องตัดริบบิ้น</label>
+    </div>
+    
+    <div id="cutterOpt" class="cutter-options">
+        <p style="font-size: 14px; margin-bottom: 8px; font-weight: bold;">เลือกแบบเครื่องตัด:</p>
+        <div class="checkbox-group">
+            <label class="checkbox-item"><input type="radio" name="cutterModel" value="normal" checked> แบบปกติ</label>
+            <label class="checkbox-item"><input type="radio" name="cutterModel" value="switch"> แบบสวิตช์</label>
+        </div>
     </div>
 </div>
 
@@ -99,6 +109,11 @@
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhjeGVneHp5YWVja2NmeWJxbXV3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI3Njk2NDAsImV4cCI6MjA4ODM0NTY0MH0.V24YgTlKrFL9LpzUFI8O9beRA9olxW-LYvsaMaVuO4w';
     const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
+    // เปิดปิดเมนูเลือกสวิตช์
+    document.getElementById('cutterCheck').addEventListener('change', function() {
+        document.getElementById('cutterOpt').style.display = this.checked ? 'block' : 'none';
+    });
+
     async function submitClaim() {
         const btn = document.getElementById("submitBtn");
         const name = document.getElementById("custName").value;
@@ -106,8 +121,12 @@
         const detail = document.getElementById("claimDetail").value;
         const courier = document.getElementById("courier").value;
         const slipFile = document.getElementById("slipInput").files[0];
+        
         const productTypes = Array.from(document.querySelectorAll('input[name="productType"]:checked')).map(el => el.value);
         const returnMethod = document.querySelector('input[name="returnMethod"]:checked')?.value;
+        
+        // ดึงค่าสวิตช์ที่เลือกจริง
+        const cutterModel = document.querySelector('input[name="cutterModel"]:checked')?.value;
 
         if(!name || !address || !detail || productTypes.length === 0 || !returnMethod || !courier || !slipFile) { 
             alert("กรุณากรอกข้อมูลให้ครบถ้วนและแนบสลิปนะคะ"); 
@@ -116,7 +135,6 @@
         
         btn.disabled = true;
         btn.innerText = "กำลังส่งข้อมูล...";
-
         try {
             const fileName = `claim_${Date.now()}.png`; 
             const { data: uploadData, error: uploadError } = await _supabase.storage
@@ -125,6 +143,8 @@
 
             if (uploadError) throw uploadError;
             const { data: urlData } = _supabase.storage.from('slips').getPublicUrl(fileName);
+
+            let isCutterClaim = productTypes.includes("เครื่องตัดริบบิ้น");
 
             const { error: insertError } = await _supabase.from('orders').insert([{
                 name: name,
@@ -136,7 +156,13 @@
                     items: productTypes,
                     reason: detail,
                     method: returnMethod,
-                    courier: courier
+                    courier: courier,
+                    // แก้ไขตรงนี้: ส่ง cutterType กำกับไปด้วยเพื่อความแม่นยำ 100%
+                    cutterType: isCutterClaim ? cutterModel : null,
+                    cutterDetails: { 
+                        normal: (isCutterClaim && cutterModel === 'normal') ? 1 : 0, 
+                        withSwitch: (isCutterClaim && cutterModel === 'switch') ? 1 : 0
+                    }
                 },
                 slip_url: urlData.publicUrl
             }]);
